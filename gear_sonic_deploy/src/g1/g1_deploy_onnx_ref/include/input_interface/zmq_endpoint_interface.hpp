@@ -769,25 +769,28 @@ private:
                 const auto& left_hand_field = buffered_header_.fields[left_hand_joints_idx];
                 const auto& left_hand_buf = buffered_buffers_[left_hand_joints_idx];
                 
-                // Validate shape: expect [7] or [N, 7] (for chunks, use first frame)
+                // Accept the per-frame joint count from the field shape. Inspire
+                // sends 6 (one drive per finger), legacy dex3 sent 7. Read the
+                // last dim ([N] or [N, D], first frame for chunks) and copy up to
+                // the 7-wide buffer, zeroing any unused slots.
                 int num_hand_joints = 0;
-                if (left_hand_field.shape.size() == 1 && left_hand_field.shape[0] == 7) {
-                    num_hand_joints = 7;
-                } else if (left_hand_field.shape.size() == 2 && left_hand_field.shape[1] == 7) {
-                    num_hand_joints = 7;
+                if (left_hand_field.shape.size() == 1) {
+                    num_hand_joints = static_cast<int>(left_hand_field.shape[0]);
+                } else if (left_hand_field.shape.size() == 2) {
+                    num_hand_joints = static_cast<int>(left_hand_field.shape[1]);
                 }
-                
-                if (num_hand_joints == 7) {
-                    // Decode 7 joint values (from first frame if chunked [N, 7])
+
+                if (num_hand_joints == 6 || num_hand_joints == 7) {
+                    left_hand_joint_values.fill(0.0);
                     if (left_hand_field.dtype == "f32") {
-                        for (int j = 0; j < 7; ++j) {
+                        for (int j = 0; j < num_hand_joints; ++j) {
                             float val;
                             std::memcpy(&val, left_hand_buf.data() + j * sizeof(float), sizeof(float));
                             if (needs_swap) val = byte_swap(val);
                             left_hand_joint_values[j] = static_cast<double>(val);
                         }
                     } else if (left_hand_field.dtype == "f64") {
-                        for (int j = 0; j < 7; ++j) {
+                        for (int j = 0; j < num_hand_joints; ++j) {
                             double val;
                             std::memcpy(&val, left_hand_buf.data() + j * sizeof(double), sizeof(double));
                             if (needs_swap) val = byte_swap(val);
@@ -804,25 +807,26 @@ private:
                 const auto& right_hand_field = buffered_header_.fields[right_hand_joints_idx];
                 const auto& right_hand_buf = buffered_buffers_[right_hand_joints_idx];
                 
-                // Validate shape: expect [7] or [N, 7] (for chunks, use first frame)
+                // Accept the per-frame joint count from the field shape (6 for
+                // Inspire, 7 for legacy dex3); copy up to the 7-wide buffer.
                 int num_hand_joints = 0;
-                if (right_hand_field.shape.size() == 1 && right_hand_field.shape[0] == 7) {
-                    num_hand_joints = 7;
-                } else if (right_hand_field.shape.size() == 2 && right_hand_field.shape[1] == 7) {
-                    num_hand_joints = 7;
+                if (right_hand_field.shape.size() == 1) {
+                    num_hand_joints = static_cast<int>(right_hand_field.shape[0]);
+                } else if (right_hand_field.shape.size() == 2) {
+                    num_hand_joints = static_cast<int>(right_hand_field.shape[1]);
                 }
-                
-                if (num_hand_joints == 7) {
-                    // Decode 7 joint values (from first frame if chunked [N, 7])
+
+                if (num_hand_joints == 6 || num_hand_joints == 7) {
+                    right_hand_joint_values.fill(0.0);
                     if (right_hand_field.dtype == "f32") {
-                        for (int j = 0; j < 7; ++j) {
+                        for (int j = 0; j < num_hand_joints; ++j) {
                             float val;
                             std::memcpy(&val, right_hand_buf.data() + j * sizeof(float), sizeof(float));
                             if (needs_swap) val = byte_swap(val);
                             right_hand_joint_values[j] = static_cast<double>(val);
                         }
                     } else if (right_hand_field.dtype == "f64") {
-                        for (int j = 0; j < 7; ++j) {
+                        for (int j = 0; j < num_hand_joints; ++j) {
                             double val;
                             std::memcpy(&val, right_hand_buf.data() + j * sizeof(double), sizeof(double));
                             if (needs_swap) val = byte_swap(val);
@@ -1235,35 +1239,35 @@ private:
             const auto& left_hand_field = buffered_header_.fields[left_hand_joints_idx];
             const auto& left_hand_buf = buffered_buffers_[left_hand_joints_idx];
             
-            // Validate shape: expect [7] or [1, 7]
+            // Accept 6 (Inspire) or 7 (legacy dex3) per-frame joints from shape.
             int num_hand_joints = 0;
-            if (left_hand_field.shape.size() == 1 && left_hand_field.shape[0] == 7) {
-                num_hand_joints = 7;
-            } else if (left_hand_field.shape.size() == 2 && left_hand_field.shape[1] == 7) {
-                num_hand_joints = 7;
+            if (left_hand_field.shape.size() == 1) {
+                num_hand_joints = static_cast<int>(left_hand_field.shape[0]);
+            } else if (left_hand_field.shape.size() == 2) {
+                num_hand_joints = static_cast<int>(left_hand_field.shape[1]);
             }
-            
-            if (num_hand_joints == 7) {
-                // Decode 7 joint values
+
+            if (num_hand_joints == 6 || num_hand_joints == 7) {
+                left_hand_joint_values.fill(0.0);
                 if (left_hand_field.dtype == "f32") {
-                    for (int j = 0; j < 7; ++j) {
+                    for (int j = 0; j < num_hand_joints; ++j) {
                         float val;
                         std::memcpy(&val, left_hand_buf.data() + j * sizeof(float), sizeof(float));
                         if (needs_swap) val = byte_swap(val);
                         left_hand_joint_values[j] = static_cast<double>(val);
                     }
                 } else if (left_hand_field.dtype == "f64") {
-                    for (int j = 0; j < 7; ++j) {
+                    for (int j = 0; j < num_hand_joints; ++j) {
                         double val;
                         std::memcpy(&val, left_hand_buf.data() + j * sizeof(double), sizeof(double));
                         if (needs_swap) val = byte_swap(val);
                         left_hand_joint_values[j] = val;
                     }
                 }
-                
+
                 if constexpr (DEBUG_LOGGING) {
                     std::cout << "[ZMQEndpointInterface] Decoded left_hand_joints: [";
-                    for (int j = 0; j < 7; ++j) {
+                    for (int j = 0; j < num_hand_joints; ++j) {
                         if (j > 0) std::cout << ", ";
                         std::cout << std::fixed << std::setprecision(4) << left_hand_joint_values[j];
                     }
@@ -1279,35 +1283,35 @@ private:
             const auto& right_hand_field = buffered_header_.fields[right_hand_joints_idx];
             const auto& right_hand_buf = buffered_buffers_[right_hand_joints_idx];
             
-            // Validate shape: expect [7] or [1, 7]
+            // Accept 6 (Inspire) or 7 (legacy dex3) per-frame joints from shape.
             int num_hand_joints = 0;
-            if (right_hand_field.shape.size() == 1 && right_hand_field.shape[0] == 7) {
-                num_hand_joints = 7;
-            } else if (right_hand_field.shape.size() == 2 && right_hand_field.shape[1] == 7) {
-                num_hand_joints = 7;
+            if (right_hand_field.shape.size() == 1) {
+                num_hand_joints = static_cast<int>(right_hand_field.shape[0]);
+            } else if (right_hand_field.shape.size() == 2) {
+                num_hand_joints = static_cast<int>(right_hand_field.shape[1]);
             }
-            
-            if (num_hand_joints == 7) {
-                // Decode 7 joint values
+
+            if (num_hand_joints == 6 || num_hand_joints == 7) {
+                right_hand_joint_values.fill(0.0);
                 if (right_hand_field.dtype == "f32") {
-                    for (int j = 0; j < 7; ++j) {
+                    for (int j = 0; j < num_hand_joints; ++j) {
                         float val;
                         std::memcpy(&val, right_hand_buf.data() + j * sizeof(float), sizeof(float));
                         if (needs_swap) val = byte_swap(val);
                         right_hand_joint_values[j] = static_cast<double>(val);
                     }
                 } else if (right_hand_field.dtype == "f64") {
-                    for (int j = 0; j < 7; ++j) {
+                    for (int j = 0; j < num_hand_joints; ++j) {
                         double val;
                         std::memcpy(&val, right_hand_buf.data() + j * sizeof(double), sizeof(double));
                         if (needs_swap) val = byte_swap(val);
                         right_hand_joint_values[j] = val;
                     }
                 }
-                
+
                 if constexpr (DEBUG_LOGGING) {
                     std::cout << "[ZMQEndpointInterface] Decoded right_hand_joints: [";
-                    for (int j = 0; j < 7; ++j) {
+                    for (int j = 0; j < num_hand_joints; ++j) {
                         if (j > 0) std::cout << ", ";
                         std::cout << std::fixed << std::setprecision(4) << right_hand_joint_values[j];
                     }

@@ -175,14 +175,19 @@ find_package(Eigen3 REQUIRED)
 
 set(EXE_INCLUDES
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/inspire_idl  # vendored Inspire DDS IDL headers
   ${ZMQ_INCLUDE_DIR}
   ${EIGEN3_INCLUDE_DIR}
 )
 
 
-# Build a static library, used by both the main executable and the tests: 
+# Build a static library, used by both the main executable and the tests:
 add_library(g1_deploy_shared STATIC ${PROJECT_SRCS})
 target_include_directories(g1_deploy_shared PUBLIC ${EXE_INCLUDES})
+# The vendored Inspire IDL sources (src/inspire_idl/*.cpp, picked up by the
+# GLOB above) need Cyclone DDS headers (dds/..., org/eclipse/...), which are
+# exposed transitively through unitree_sdk2's interface includes.
+target_link_libraries(g1_deploy_shared PUBLIC unitree_sdk2)
 
 # List of libs to link for both the main executable and the tests
 set(EXE_LIBS
